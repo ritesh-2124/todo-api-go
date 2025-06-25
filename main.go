@@ -1,41 +1,75 @@
 package main
 
 import (
-	"encoding/json",
-	"log",
-	"net/http",
-	"string",
-	"time",
-	"context",
-	"os",
-	"os/signal",
-	"syscall",
+	"fmt"
+	"os"
 
-	"github.com/go-chi/chi",
-	"github.com/go-chi/chi/middleware",
-	"github.com/go-chi/cors",
+	// "encoding/json";
+	"log"
+	// "net/http";
+	// "strings";
+	"context"
+	"time"
+
+	// "os/signal";
+	// "syscall";
+
+	// "github.com/go-chi/cors"
+	// "github.com/go-chi/chi";
+	// "github.com/go-chi/chi/middleware";
+	// "github.com/go-chi/cors";
+	"github.com/joho/godotenv"
 	"github.com/thedevsaddam/renderer"
-	mgo "gopkg.in/mgo.v2",
-	"gopkg.in/mgo.v2/bson",
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	// "gopkg.in/mgo.v2/bson";
 )
 
 var rnd *renderer.Render
-var db *mgo.Database
-
-const (
-	DB_HOST = "DB_HOST"
-	DB_PORT = "DB_PORT"
-	DB_NAME = "DB_NAME"
-	DB_USER = "DB_USER"
-	DB_PASS = "DB_PASS"
-)
+var db *mongo.Database
 
 func init() {
-	rnd = renderer.New()
-	srv := os.Getenv(DB_HOST) + ":" + os.Getenv(DB_PORT)
-	session, err := mgo.Dial(srv)
+	err := godotenv.Load()
 	if err != nil {
-		panic(err)
+		log.Fatal("Error loading .env file")
 	}
-	db = session.DB(os.Getenv(DB_NAME))
+	rnd = renderer.New()
+
+	srv := os.Getenv("MONGO_URI")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	clientOptions := options.Client().ApplyURI(srv)
+
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		log.Fatalf("Could not connect to MongoDB: %v", err)
+	}
+
+	// Ping the database to ensure connectivity
+	err = client.Ping(ctx, nil)
+	if err != nil {
+		log.Fatalf("Could not ping MongoDB: %v", err)
+	}
+
+	db = client.Database("go-todo") // name of your database
+	fmt.Println("Connected to MongoDB")
+}
+
+type Todo struct {
+	ID   string `json:"id" bson:"_id"`
+	Text string `json:"text" bson:"text"`
+	Done bool   `json:"done" bson:"done"`
+}
+
+type TodoPayload struct {
+	Text string `json:"text" bson:"text"`
+	Done bool   `json:"done" bson:"done"`
+}
+
+func main() {
+	fmt.Println("App is starting...")
+	// Start server or hold open
+	select {} // Keeps the app running for now
 }
